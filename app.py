@@ -1,11 +1,12 @@
 """Digit Pixelation Visualizer - Streamlit UI only."""
 from __future__ import annotations
 
+import numpy as np
 import streamlit as st
 from streamlit_drawable_canvas import st_canvas
 
 from canvas_utils import CANVAS_SIZE, canvas_to_grayscale
-from pixelation import process_digit, render_pixel_grid_with_values
+from pixelation import GRID_SIZE, process_digit, render_pixel_grid_with_values
 
 st.set_page_config(page_title="Digit Pixelation Visualizer", layout="wide")
 
@@ -23,21 +24,29 @@ st.markdown(
 )
 
 st.title("Digit Pixelation Visualizer")
-st.caption("Draw each digit (mouse or pen). It is centered, shrunk to 32×32, and shown with its pixel values.")
+st.caption(
+    "Draw each digit (mouse or pen), then click **Process** to pixelate. "
+    "The digit is centered, shrunk to 32×32, and shown with its pixel values."
+)
 
 # Changing this counter changes every canvas key, which resets all canvases.
 if "reset_counter" not in st.session_state:
     st.session_state.reset_counter = 0
 
+# Store processed pixel arrays per digit so they persist across reruns.
+if "processed" not in st.session_state:
+    st.session_state.processed = {}
+
 if st.button("Clear All"):
     st.session_state.reset_counter += 1
+    st.session_state.processed = {}
 
 cols = st.columns(10)
 for digit, col in enumerate(cols):
     with col:
         st.markdown(f"### {digit}")
 
-        # 1. Drawing canvas: black background, white stroke. Live-updates on every stroke.
+        # 1. Drawing canvas: black background, white stroke.
         result = st_canvas(
             fill_color="rgba(255, 255, 255, 1)",
             stroke_width=20,
@@ -50,15 +59,22 @@ for digit, col in enumerate(cols):
             key=f"canvas_{digit}_{st.session_state.reset_counter}",
         )
 
-        # 2. Down arrow + caption.
+        # 2. "Process" button — pixelation only happens on click.
+        if st.button("Process", key=f"process_{digit}_{st.session_state.reset_counter}"):
+            gray = canvas_to_grayscale(result)
+            pixels = process_digit(gray)
+            st.session_state.processed[digit] = pixels
+
+        # 3. Down arrow + caption.
         st.markdown(
             "<div style='text-align:center'><span style='font-size:32px'>↓</span><br>"
             "<span style='font-size:13px;color:gray'>raw → pixelated</span></div>",
             unsafe_allow_html=True,
         )
 
-        # 3 + 4. Process the drawing and show the 32x32 grid with values overlaid.
-        # An empty canvas yields an all-zero grid (no error).
-        gray = canvas_to_grayscale(result)
-        pixels = process_digit(gray)
+        # 4. Show the processed 32x32 grid (or a blank placeholder if not yet processed).
+        pixels = st.session_state.processed.get(
+            digit, np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.uint8)
+        )
         st.image(render_pixel_grid_with_values(pixels, upscale_to=320), width=320)
+
