@@ -22,7 +22,7 @@ An interactive Streamlit web app that lets you draw digits (0–9) and instantly
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/digit_pixelation_app.git
+git clone https://github.com/jeevitha27/digit_pixelation_app.git
 cd digit_pixelation_app
 
 # Install dependencies
