@@ -10,9 +10,18 @@ CANVAS_SIZE: int = 280
 
 def canvas_to_rgba(canvas_result: Any) -> Optional[np.ndarray]:
     """Return the canvas RGBA image as a uint8 array, or None if nothing is available yet."""
-    if canvas_result is None or getattr(canvas_result, "image_data", None) is None:
+    if canvas_result is None:
         return None
-    data = np.asarray(canvas_result.image_data)
+    # In newer streamlit-drawable-canvas versions, `image_data` is a property
+    # that raises RuntimeError when no image data URL is available yet.
+    # A plain getattr() won't catch that, so we use try/except.
+    try:
+        img = canvas_result.image_data
+    except (RuntimeError, AttributeError):
+        return None
+    if img is None:
+        return None
+    data = np.asarray(img)
     if data.ndim != 3 or data.shape[2] != 4:
         return None
     return data.astype(np.uint8)
